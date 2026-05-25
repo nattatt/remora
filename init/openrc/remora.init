@@ -1,0 +1,71 @@
+#!/sbin/openrc-run
+# /etc/init.d/remora
+#
+# Run xmrig under oniux as the unprivileged `remora` user.  Binaries
+# live under /opt/remora/bin/ — install is fully self-contained.
+
+name="remora"
+description="opportunistic xmrig — runs under oniux, scales threads to host load"
+
+# oniux execs launcher.sh inside its own network namespace.  The
+# launcher spawns xmrig + scale-watcher.sh as siblings in that netns;
+# the watcher controls xmrig via filesystem writes to xmrig.json
+# (xmrig's `watch: true` reloads on file change) because oniux routes
+# all TCP including loopback through Tor's SOCKS5 — an HTTP API
+# would be unreachable.
+command="/opt/remora/bin/oniux"
+command_args="/opt/remora/launcher.sh"
+command_user="remora:remora"
+command_background=true
+
+pidfile="/run/remora.pid"
+output_log="/opt/remora/xmrig.log"
+error_log="/opt/remora/xmrig.log"
+
+supervisor=supervise-daemon
+supervise_daemon_args="--nicelevel 19 --ionice 3"
+
+depend() {
+    need net
+    after dns
+}
+
+start_pre() {
+    # Defensive orphan sweep.  supervise-daemon's child (oniux) doesn't
+    # propagate SIGTERM to its launcher.sh + xmrig + watcher descendants
+    # on stop — they reparent to init and keep running.  Next `start`
+    # sees a stale pidfile, spawns a fresh tree, and the orphan tree
+    # mines alongside it (duplicate watchers fight over cpu.rx,
+    # hashrate tanks).  stop_post sweeps too; this one catches the
+    # stale-pidfile path where stop never actually got invoked.
+    pkill -9 -u remora -f /opt/remora 2>/dev/null || true
+    sleep 1
+
+    # MSR writes need root, so apply before xmrig drops to the
+    # `remora` user.  randomx-msr.sh exits 0 if wrmsr (msr-tools) or
+    # the msr kernel module is missing — the service still boots,
+    # just with the "FAILED TO APPLY MSR MOD" warning in xmrig.log.
+    /opt/remora/randomx-msr.sh || true
+
+    # Underclock the CPU (lower sustained boost = lower temps under
+    # flat-out RandomX).  UNCLOCK_PERCENT comes from /etc/conf.d/remora;
+    # cpu-freq.sh auto-detects the hardware max, so the setting is
+    # portable across CPUs.  Empty / unset = skip.
+    if [ -n "${UNCLOCK_PERCENT:-}" ]; then
+        /opt/remora/cpu-freq.sh "$UNCLOCK_PERCENT"
+    fi
+}
+
+stop_post() {
+    # See start_pre comment for why both hooks sweep.  Brief sleep so
+    # cpu-freq.sh release isn't racing a still-dying xmrig.
+    pkill -9 -u remora -f /opt/remora 2>/dev/null || true
+    sleep 1
+
+    # On release: aggressive underclocks (<50%) get doubled back up;
+    # gentle ones (≥50%) stay in place because they're presumably the
+    # host's chosen non-mining steady state.  See cpu-freq.sh.
+    if [ -n "${UNCLOCK_PERCENT:-}" ]; then
+        /opt/remora/cpu-freq.sh release "$UNCLOCK_PERCENT"
+    fi
+}

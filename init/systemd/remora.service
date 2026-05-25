@@ -1,0 +1,32 @@
+[Unit]
+Description=Opportunistic RandomX supervisor with automatic thread-count scaling
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=remora
+Group=remora
+Nice=19
+IOSchedulingClass=idle
+EnvironmentFile=-/etc/default/remora
+
+# The + prefix runs each ExecStartPre as root even though User=remora.
+# Orphan sweep: oniux doesn't propagate SIGTERM to its children, so
+# prior incarnations can survive a stop and race with the new tree.
+ExecStartPre=+/bin/sh -c 'pkill -9 -u remora -f /opt/remora 2>/dev/null; sleep 1; :'
+# MSR tunings need root; randomx-msr.sh exits 0 if wrmsr is absent.
+ExecStartPre=+/opt/remora/randomx-msr.sh
+# Optional CPU underclock; no-op if UNCLOCK_PERCENT is unset.
+ExecStartPre=+/bin/sh -c '[ -n "${UNCLOCK_PERCENT:-}" ] && exec /opt/remora/cpu-freq.sh "${UNCLOCK_PERCENT}" || :'
+
+ExecStart=/opt/remora/bin/oniux /opt/remora/launcher.sh
+
+ExecStopPost=+/bin/sh -c 'pkill -9 -u remora -f /opt/remora 2>/dev/null; sleep 1; :'
+ExecStopPost=+/bin/sh -c '[ -n "${UNCLOCK_PERCENT:-}" ] && exec /opt/remora/cpu-freq.sh release "${UNCLOCK_PERCENT}" || :'
+
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

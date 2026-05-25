@@ -1,0 +1,19 @@
+#!/bin/sh
+# /etc/sv/remora/run — runit service run script for remora.
+
+# Load env (UNCLOCK_PERCENT etc.) written by setup.sh.
+[ -f /etc/sv/remora/conf ] && . /etc/sv/remora/conf
+
+# Orphan sweep: runit restarts the run script on crash, and prior
+# incarnations can leave xmrig/watcher reparented to init.
+pkill -9 -u remora -f /opt/remora 2>/dev/null || true
+sleep 1
+
+# MSR tunings and optional underclock run as root before chpst drops
+# to the remora user.
+/opt/remora/randomx-msr.sh || true
+if [ -n "${UNCLOCK_PERCENT:-}" ]; then
+    /opt/remora/cpu-freq.sh "$UNCLOCK_PERCENT"
+fi
+
+exec chpst -u remora /opt/remora/bin/oniux /opt/remora/launcher.sh

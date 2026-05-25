@@ -1,0 +1,76 @@
+{
+    "autosave": false,
+    "background": false,
+    "colors": true,
+    "donate-level": 0,
+    "donate-over-proxy": 0,
+    "log-file": "/opt/remora/xmrig.log",
+    "syslog": false,
+    "verbose": 0,
+    "watch": true,
+
+    "cpu": {
+        "enabled": true,
+        "huge-pages": true,
+        "huge-pages-jit": false,
+        "hw-aes": null,
+        "priority": null,
+        "memory-pool": false,
+
+        "yield": true,
+        "asm": true,
+
+        "rx":         true,
+        "rx/wow":     false,
+        "rx/arq":     false,
+        "rx/graft":   false,
+        "rx/keva":    false,
+        "argon2-impl": null,
+        "astrobwt":   false,
+        "cn":         false,
+        "cn-lite":    false,
+        "cn-heavy":   false,
+        "cn-pico":    false,
+        "cn/0":       false,
+        "cn-lite/0":  false,
+        "ghostrider": false,
+        "kawpow":     false
+    },
+
+    "opencl": { "enabled": false },
+    "cuda":   { "enabled": false },
+
+    "randomx": {
+        "init":      -1,
+        "init-avx2": -1,
+        "mode":      "auto",
+        "1gb-pages": false,
+        "rdmsr":     false,
+        "wrmsr":     false,
+        "cache_qos": false,
+        "numa":      true,
+        "scratchpad_prefetch_mode": 1
+    },
+
+    "pools": [
+        {
+            "coin":     "monero",
+            "url":      "__POOL_URL__",
+            "user":     "__WALLET__",
+            "pass":     "__RIG_ID__",
+            "rig-id":   "__RIG_ID__",
+            "tls":      false,
+            "keepalive": true,
+            "enabled":  true,
+            "nicehash": false
+        }
+    ],
+
+    "print-time":        60,
+    "health-print-time": 60,
+    "retries":           5,
+    "retry-pause":       5,
+    "user-agent":        null,
+    "pause-on-battery":  true,
+    "pause-on-active":   0
+}

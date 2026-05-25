@@ -1,0 +1,7 @@
+Place compiled binaries here before running install.sh:
+
+  bin/xmrig    — build from https://github.com/xmrig/xmrig
+  bin/oniux    — build from https://gitlab.torproject.org/tpo/core/oniux
+
+Both must be compiled for the target architecture.  install.sh will
+refuse to proceed if either is missing or not executable.

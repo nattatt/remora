@@ -1,0 +1,11 @@
+#!/bin/sh
+# /etc/sv/remora/finish — runit finish script; called on service exit.
+
+[ -f /etc/sv/remora/conf ] && . /etc/sv/remora/conf
+
+pkill -9 -u remora -f /opt/remora 2>/dev/null || true
+sleep 1
+
+if [ -n "${UNCLOCK_PERCENT:-}" ]; then
+    /opt/remora/cpu-freq.sh release "$UNCLOCK_PERCENT"
+fi
